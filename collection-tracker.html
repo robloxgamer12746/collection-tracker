@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Collection">
+<meta name="theme-color" content="#faf8f3">
+<title>Collection Round</title>
+<style>
+  :root{
+    --ink:#1c1b19;
+    --paper:#faf8f3;
+    --card:#ffffff;
+    --line:#e4e0d6;
+    --muted:#8a8578;
+    --accent:#b5502e;
+    --accent-light:#f3e2da;
+    --done:#4d7358;
+    --done-light:#e3ecdf;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding:0 0 60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:28px 20px 0;}
+  header{margin-bottom:20px;}
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 6px;
+  }
+  h1{font-size:26px;font-weight:600;margin:0 0 4px;letter-spacing:-0.01em;}
+  .week-range{font-size:14px;color:var(--muted);margin:0;}
+
+  .progress-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 20px;
+    margin:20px 0;
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .ring{
+    width:56px;height:56px;flex-shrink:0;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:600;font-size:15px;
+    background:conic-gradient(var(--done) calc(var(--pct,0)*1%), var(--line) 0);
+  }
+  .ring-inner{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--card);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;
+  }
+  .progress-text{flex:1;}
+  .progress-text .big{font-size:15px;font-weight:600;margin:0 0 2px;}
+  .progress-text .small{font-size:13px;color:var(--muted);margin:0;}
+
+  .reminder-banner{
+    background:var(--accent-light);
+    border:1px solid #e6c3af;
+    color:#7a3419;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:14px;
+    margin-bottom:20px;
+    display:none;
+  }
+  .reminder-banner.show{display:block;}
+  .reminder-banner b{font-weight:600;}
+
+  .all-done{
+    background:var(--done-light);
+    border:1px solid #c3d8bd;
+    color:#33502f;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:14px;
+    margin-bottom:20px;
+    display:none;
+  }
+  .all-done.show{display:block;}
+
+  .shop-list{list-style:none;margin:0;padding:0;}
+  .shop{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .shop.collected{
+    background:var(--done-light);
+    border-color:#c3d8bd;
+  }
+  .check{
+    width:26px;height:26px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    flex-shrink:0;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--card);
+    transition:all .15s ease;
+  }
+  .shop.collected .check{
+    background:var(--done);
+    border-color:var(--done);
+    color:#fff;
+  }
+  .check svg{width:14px;height:14px;opacity:0;transition:opacity .1s;}
+  .shop.collected .check svg{opacity:1;}
+  .shop-info{flex:1;min-width:0;cursor:pointer;}
+  .shop-name{font-size:15px;font-weight:500;margin:0;}
+  .shop.collected .shop-name{color:var(--muted);text-decoration:line-through;}
+  .shop-note{font-size:12px;color:var(--muted);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .del-btn{
+    background:none;border:none;color:var(--muted);
+    cursor:pointer;padding:6px;font-size:13px;flex-shrink:0;
+    opacity:.5;
+  }
+  .del-btn:hover{opacity:1;color:var(--accent);}
+
+  .empty{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  .add-row{
+    display:flex;
+    gap:8px;
+    margin-top:20px;
+  }
+  .add-row input{
+    flex:1;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 14px;
+    font-size:14px;
+    background:var(--card);
+    color:var(--ink);
+  }
+  .add-row input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .add-row button{
+    border:none;
+    background:var(--ink);
+    color:#fff;
+    border-radius:10px;
+    padding:0 20px;
+    font-size:14px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .add-row button:active{transform:scale(0.97);}
+
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:28px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .reset-btn{
+    background:none;border:none;color:var(--muted);
+    font-size:13px;cursor:pointer;text-decoration:underline;
+    padding:4px;
+  }
+  .reset-btn:hover{color:var(--accent);}
+  .status{font-size:12px;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Weekly collection round</p>
+    <h1 id="weekTitle">This week</h1>
+    <p class="week-range" id="weekRange"></p>
+  </header>
+
+  <div class="progress-card">
+    <div class="ring" id="ring">
+      <div class="ring-inner" id="ringText">0/0</div>
+    </div>
+    <div class="progress-text">
+      <p class="big" id="progressBig">No shops added yet</p>
+      <p class="small" id="progressSmall">Add your first shop below</p>
+    </div>
+  </div>
+
+  <div class="reminder-banner" id="reminderBanner"></div>
+  <div class="all-done" id="allDoneBanner">All collections done for this week. Nice work.</div>
+
+  <ul class="shop-list" id="shopList"></ul>
+  <div class="empty" id="emptyState" style="display:none;">No shops yet. Add your first one below.</div>
+
+  <div class="add-row">
+    <input type="text" id="newShopName" placeholder="Shop name, e.g. Riverside Bakery" maxlength="60" />
+    <button id="addBtn">Add</button>
+  </div>
+
+  <div class="footer-row">
+    <span class="status" id="lastSaved"></span>
+    <button class="reset-btn" id="resetBtn">Reset this week's ticks</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SHOPS_KEY = 'shops';
+  const WEEK_KEY_PREFIX = 'week:';
+
+  let shops = [];
+  let weekId = getWeekId(new Date());
+  let collected = {};
+
+  function getWeekId(d){
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = (date.getUTCDay() + 6) % 7; // Monday=0
+    date.setUTCDate(date.getUTCDate() - day);
+    return date.toISOString().slice(0,10);
+  }
+
+  function getWeekRangeLabel(weekId){
+    const start = new Date(weekId + 'T00:00:00Z');
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    const opts = {month:'short', day:'numeric'};
+    return start.toLocaleDateString(undefined,opts) + ' – ' + end.toLocaleDateString(undefined,opts);
+  }
+
+  function uid(){
+    return 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  async function loadAll(){
+    try{
+      const res = await window.storage.get(SHOPS_KEY, false);
+      shops = res ? JSON.parse(res.value) : [];
+    }catch(e){ shops = []; }
+
+    try{
+      const res = await window.storage.get(WEEK_KEY_PREFIX + weekId, false);
+      collected = res ? JSON.parse(res.value) : {};
+    }catch(e){ collected = {}; }
+
+    render();
+  }
+
+  async function saveShops(){
+    try{
+      await window.storage.set(SHOPS_KEY, JSON.stringify(shops), false);
+    }catch(e){ console.error('save shops failed', e); }
+  }
+
+  async function saveCollected(){
+    try{
+      await window.storage.set(WEEK_KEY_PREFIX + weekId, JSON.stringify(collected), false);
+      const el = document.getElementById('lastSaved');
+      el.textContent = 'Saved';
+      setTimeout(()=>{ if(el.textContent==='Saved') el.textContent=''; }, 1500);
+    }catch(e){ console.error('save collected failed', e); }
+  }
+
+  function render(){
+    document.getElementById('weekRange').textContent = getWeekRangeLabel(weekId);
+
+    const list = document.getElementById('shopList');
+    const empty = document.getElementById('emptyState');
+    list.innerHTML = '';
+
+    if(shops.length === 0){
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+    }
+
+    let doneCount = 0;
+    shops.forEach(shop=>{
+      const isDone = !!collected[shop.id];
+      if(isDone) doneCount++;
+
+      const li = document.createElement('li');
+      li.className = 'shop' + (isDone ? ' collected' : '');
+
+      const check = document.createElement('div');
+      check.className = 'check';
+      check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      check.onclick = ()=> toggleShop(shop.id);
+
+      const info = document.createElement('div');
+      info.className = 'shop-info';
+      info.onclick = ()=> toggleShop(shop.id);
+      const name = document.createElement('p');
+      name.className = 'shop-name';
+      name.textContent = shop.name;
+      info.appendChild(name);
+      if(shop.note){
+        const note = document.createElement('p');
+        note.className = 'shop-note';
+        note.textContent = shop.note;
+        info.appendChild(note);
+      }
+
+      const del = document.createElement('button');
+      del.className = 'del-btn';
+      del.setAttribute('aria-label','Remove shop');
+      del.textContent = 'Remove';
+      del.onclick = (e)=>{ e.stopPropagation(); removeShop(shop.id); };
+
+      li.appendChild(check);
+      li.appendChild(info);
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+
+    const total = shops.length;
+    const pct = total ? Math.round((doneCount/total)*100) : 0;
+    document.getElementById('ring').style.setProperty('--pct', pct);
+    document.getElementById('ringText').textContent = doneCount + '/' + total;
+
+    const big = document.getElementById('progressBig');
+    const small = document.getElementById('progressSmall');
+    if(total === 0){
+      big.textContent = 'No shops added yet';
+      small.textContent = 'Add your first shop below';
+    } else if(doneCount === total){
+      big.textContent = 'All done for this week';
+      small.textContent = total + ' of ' + total + ' shops collected';
+    } else {
+      big.textContent = doneCount + ' of ' + total + ' collected';
+      small.textContent = (total - doneCount) + ' shop' + ((total-doneCount)===1?'':'s') + ' still to visit';
+    }
+
+    const remaining = shops.filter(s=>!collected[s.id]);
+    const banner = document.getElementById('reminderBanner');
+    const allDone = document.getElementById('allDoneBanner');
+    if(total > 0 && remaining.length > 0){
+      const names = remaining.map(s=>s.name);
+      let listText;
+      if(names.length <= 3){
+        listText = names.join(', ');
+      } else {
+        listText = names.slice(0,3).join(', ') + ' and ' + (names.length-3) + ' more';
+      }
+      banner.innerHTML = '<b>Still to collect:</b> ' + listText;
+      banner.classList.add('show');
+      allDone.classList.remove('show');
+    } else if(total > 0 && remaining.length === 0){
+      banner.classList.remove('show');
+      allDone.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+      allDone.classList.remove('show');
+    }
+  }
+
+  function toggleShop(id){
+    if(collected[id]) delete collected[id];
+    else collected[id] = true;
+    render();
+    saveCollected();
+  }
+
+  async function addShop(){
+    const input = document.getElementById('newShopName');
+    const name = input.value.trim();
+    if(!name) return;
+    shops.push({id: uid(), name: name, note:''});
+    input.value = '';
+    render();
+    await saveShops();
+  }
+
+  async function removeShop(id){
+    shops = shops.filter(s=>s.id !== id);
+    delete collected[id];
+    render();
+    await saveShops();
+    await saveCollected();
+  }
+
+  async function resetWeek(){
+    collected = {};
+    render();
+    await saveCollected();
+  }
+
+  document.getElementById('addBtn').onclick = addShop;
+  document.getElementById('newShopName').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') addShop();
+  });
+  document.getElementById('resetBtn').onclick = ()=>{
+    if(confirm('Clear all ticks for this week? Your shop list stays.')) resetWeek();
+  };
+
+  loadAll();
+})();
+</script>
+</body>
+</html>
