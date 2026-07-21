@@ -219,7 +219,7 @@
   </div>
 
   <div class="footer-row">
-    <span class="status"><span id="lastSaved"></span> <span id="reloadTimer"></span></span>
+    <span class="status" id="lastSaved"></span>
     <button class="reset-btn" id="resetBtn">Reset this week's ticks</button>
   </div>
 </div>
@@ -476,20 +476,6 @@ document.getElementById('resetBtn').onclick = ()=>{
 };
 
 loadAll();
-
-let secondsLeft = 30;
-const reloadTimerEl = document.getElementById('reloadTimer');
-function tickReloadTimer(){
-  reloadTimerEl.textContent = '· reloading in ' + secondsLeft + 's';
-  if(secondsLeft <= 0){
-    window.location.reload();
-    return;
-  }
-  secondsLeft--;
-}
-tickReloadTimer();
-setInterval(tickReloadTimer, 1000);
-
 </script>
 </body>
 </html>
