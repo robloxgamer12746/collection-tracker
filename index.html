@@ -224,203 +224,251 @@
   </div>
 </div>
 
-<script>
-(function(){
-  const SHOPS_KEY = 'shops';
-  const WEEK_KEY_PREFIX = 'week:';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  let shops = [];
-  let weekId = getWeekId(new Date());
-  let collected = {};
+const firebaseConfig = {
+  apiKey: "AIzaSyBqlFxSX-_LOlnQJt-WXpvJi6z8ypFofb4",
+  authDomain: "collection-tracker-6cdb6.firebaseapp.com",
+  projectId: "collection-tracker-6cdb6",
+  storageBucket: "collection-tracker-6cdb6.firebasestorage.app",
+  messagingSenderId: "690890737019",
+  appId: "1:690890737019:web:a6299a458123662e6f29de"
+};
 
-  function getWeekId(d){
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const day = (date.getUTCDay() + 6) % 7; // Monday=0
-    date.setUTCDate(date.getUTCDate() - day);
-    return date.toISOString().slice(0,10);
-  }
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
 
-  function getWeekRangeLabel(weekId){
-    const start = new Date(weekId + 'T00:00:00Z');
-    const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 6);
-    const opts = {month:'short', day:'numeric'};
-    return start.toLocaleDateString(undefined,opts) + ' – ' + end.toLocaleDateString(undefined,opts);
-  }
+let shops = [];
+let weekId = getWeekId(new Date());
+let collected = {};
+let userDocRef = null;
 
-  function uid(){
-    return 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-  }
+function getWeekId(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (date.getUTCDay() + 6) % 7; // Monday=0
+  date.setUTCDate(date.getUTCDate() - day);
+  return date.toISOString().slice(0,10);
+}
 
-  async function loadAll(){
-    try{
-      const raw = localStorage.getItem(SHOPS_KEY);
-      shops = raw ? JSON.parse(raw) : [];
-    }catch(e){ shops = []; }
+function getWeekRangeLabel(weekId){
+  const start = new Date(weekId + 'T00:00:00Z');
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const opts = {month:'short', day:'numeric'};
+  return start.toLocaleDateString(undefined,opts) + ' – ' + end.toLocaleDateString(undefined,opts);
+}
 
-    try{
-      const raw = localStorage.getItem(WEEK_KEY_PREFIX + weekId);
-      collected = raw ? JSON.parse(raw) : {};
-    }catch(e){ collected = {}; }
+function uid(){
+  return 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
 
-    render();
-  }
+function setStatus(text){
+  document.getElementById('lastSaved').textContent = text;
+}
 
-  async function saveShops(){
-    try{
-      localStorage.setItem(SHOPS_KEY, JSON.stringify(shops));
-    }catch(e){ console.error('save shops failed', e); }
-  }
-
-  async function saveCollected(){
-    try{
-      localStorage.setItem(WEEK_KEY_PREFIX + weekId, JSON.stringify(collected));
-      const el = document.getElementById('lastSaved');
-      el.textContent = 'Saved';
-      setTimeout(()=>{ if(el.textContent==='Saved') el.textContent=''; }, 1500);
-    }catch(e){ console.error('save collected failed', e); }
-  }
-
-  function render(){
-    document.getElementById('weekRange').textContent = getWeekRangeLabel(weekId);
-
-    const list = document.getElementById('shopList');
-    const empty = document.getElementById('emptyState');
-    list.innerHTML = '';
-
-    if(shops.length === 0){
-      empty.style.display = 'block';
-    } else {
-      empty.style.display = 'none';
-    }
-
-    let doneCount = 0;
-    shops.forEach(shop=>{
-      const isDone = !!collected[shop.id];
-      if(isDone) doneCount++;
-
-      const li = document.createElement('li');
-      li.className = 'shop' + (isDone ? ' collected' : '');
-
-      const check = document.createElement('div');
-      check.className = 'check';
-      check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-      check.onclick = ()=> toggleShop(shop.id);
-
-      const info = document.createElement('div');
-      info.className = 'shop-info';
-      info.onclick = ()=> toggleShop(shop.id);
-      const name = document.createElement('p');
-      name.className = 'shop-name';
-      name.textContent = shop.name;
-      info.appendChild(name);
-      if(shop.note){
-        const note = document.createElement('p');
-        note.className = 'shop-note';
-        note.textContent = shop.note;
-        info.appendChild(note);
-      }
-
-      const del = document.createElement('button');
-      del.className = 'del-btn';
-      del.setAttribute('aria-label','Remove shop');
-      del.textContent = 'Remove';
-      del.onclick = (e)=>{ e.stopPropagation(); removeShop(shop.id); };
-
-      li.appendChild(check);
-      li.appendChild(info);
-      li.appendChild(del);
-      list.appendChild(li);
-    });
-
-    const total = shops.length;
-    const pct = total ? Math.round((doneCount/total)*100) : 0;
-    document.getElementById('ring').style.setProperty('--pct', pct);
-    document.getElementById('ringText').textContent = doneCount + '/' + total;
-
-    const big = document.getElementById('progressBig');
-    const small = document.getElementById('progressSmall');
-    if(total === 0){
-      big.textContent = 'No shops added yet';
-      small.textContent = 'Add your first shop below';
-    } else if(doneCount === total){
-      big.textContent = 'All done for this week';
-      small.textContent = total + ' of ' + total + ' shops collected';
-    } else {
-      big.textContent = doneCount + ' of ' + total + ' collected';
-      small.textContent = (total - doneCount) + ' shop' + ((total-doneCount)===1?'':'s') + ' still to visit';
-    }
-
-    const remaining = shops.filter(s=>!collected[s.id]);
-    const banner = document.getElementById('reminderBanner');
-    const allDone = document.getElementById('allDoneBanner');
-    if(total > 0 && remaining.length > 0){
-      const names = remaining.map(s=>s.name);
-      let listText;
-      if(names.length <= 3){
-        listText = names.join(', ');
+function ensureAuth(){
+  return new Promise((resolve, reject)=>{
+    onAuthStateChanged(auth, (user)=>{
+      if(user){
+        userDocRef = doc(db, 'trackers', user.uid);
+        resolve(user);
       } else {
-        listText = names.slice(0,3).join(', ') + ' and ' + (names.length-3) + ' more';
+        signInAnonymously(auth).catch(err=>{
+          console.error('sign-in failed', err);
+          setStatus('Offline — could not connect');
+          reject(err);
+        });
       }
-      banner.innerHTML = '<b>Still to collect:</b> ' + listText;
-      banner.classList.add('show');
-      allDone.classList.remove('show');
-    } else if(total > 0 && remaining.length === 0){
-      banner.classList.remove('show');
-      allDone.classList.add('show');
+    });
+  });
+}
+
+async function loadAll(){
+  setStatus('Loading…');
+  try{
+    await ensureAuth();
+    const snap = await getDoc(userDocRef);
+    if(snap.exists()){
+      const data = snap.data();
+      shops = data.shops || [];
+      collected = (data.weeks && data.weeks[weekId]) || {};
     } else {
-      banner.classList.remove('show');
-      allDone.classList.remove('show');
+      shops = [];
+      collected = {};
+      await setDoc(userDocRef, { shops: [], weeks: {} });
     }
-  }
-
-  function toggleShop(id){
-    if(collected[id]) delete collected[id];
-    else collected[id] = true;
-    render();
-    saveCollected();
-  }
-
-  async function addShop(){
-    const input = document.getElementById('newShopName');
-    const addrInput = document.getElementById('newShopAddress');
-    const name = input.value.trim();
-    if(!name) return;
-    const address = addrInput.value.trim();
-    shops.push({id: uid(), name: name, note: address});
-    input.value = '';
-    addrInput.value = '';
-    render();
-    await saveShops();
-  }
-
-  async function removeShop(id){
-    shops = shops.filter(s=>s.id !== id);
-    delete collected[id];
-    render();
-    await saveShops();
-    await saveCollected();
-  }
-
-  async function resetWeek(){
+    setStatus('');
+  }catch(e){
+    console.error('load failed', e);
+    shops = [];
     collected = {};
-    render();
-    await saveCollected();
+    setStatus('Offline — changes may not save');
+  }
+  render();
+}
+
+async function saveShops(){
+  try{
+    await updateDoc(userDocRef, { shops });
+    flashSaved();
+  }catch(e){ console.error('save shops failed', e); setStatus('Could not save'); }
+}
+
+async function saveCollected(){
+  try{
+    await updateDoc(userDocRef, { [`weeks.${weekId}`]: collected });
+    flashSaved();
+  }catch(e){ console.error('save collected failed', e); setStatus('Could not save'); }
+}
+
+function flashSaved(){
+  setStatus('Saved');
+  setTimeout(()=>{ if(document.getElementById('lastSaved').textContent==='Saved') setStatus(''); }, 1500);
+}
+
+function render(){
+  document.getElementById('weekRange').textContent = getWeekRangeLabel(weekId);
+
+  const list = document.getElementById('shopList');
+  const empty = document.getElementById('emptyState');
+  list.innerHTML = '';
+
+  if(shops.length === 0){
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
   }
 
-  document.getElementById('addBtn').onclick = addShop;
-  document.getElementById('newShopName').addEventListener('keydown', e=>{
-    if(e.key === 'Enter') addShop();
-  });
-  document.getElementById('newShopAddress').addEventListener('keydown', e=>{
-    if(e.key === 'Enter') addShop();
-  });
-  document.getElementById('resetBtn').onclick = ()=>{
-    if(confirm('Clear all ticks for this week? Your shop list stays.')) resetWeek();
-  };
+  let doneCount = 0;
+  shops.forEach(shop=>{
+    const isDone = !!collected[shop.id];
+    if(isDone) doneCount++;
 
-  loadAll();
-})();
+    const li = document.createElement('li');
+    li.className = 'shop' + (isDone ? ' collected' : '');
+
+    const check = document.createElement('div');
+    check.className = 'check';
+    check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    check.onclick = ()=> toggleShop(shop.id);
+
+    const info = document.createElement('div');
+    info.className = 'shop-info';
+    info.onclick = ()=> toggleShop(shop.id);
+    const name = document.createElement('p');
+    name.className = 'shop-name';
+    name.textContent = shop.name;
+    info.appendChild(name);
+    if(shop.note){
+      const note = document.createElement('p');
+      note.className = 'shop-note';
+      note.textContent = shop.note;
+      info.appendChild(note);
+    }
+
+    const del = document.createElement('button');
+    del.className = 'del-btn';
+    del.setAttribute('aria-label','Remove shop');
+    del.textContent = 'Remove';
+    del.onclick = (e)=>{ e.stopPropagation(); removeShop(shop.id); };
+
+    li.appendChild(check);
+    li.appendChild(info);
+    li.appendChild(del);
+    list.appendChild(li);
+  });
+
+  const total = shops.length;
+  const pct = total ? Math.round((doneCount/total)*100) : 0;
+  document.getElementById('ring').style.setProperty('--pct', pct);
+  document.getElementById('ringText').textContent = doneCount + '/' + total;
+
+  const big = document.getElementById('progressBig');
+  const small = document.getElementById('progressSmall');
+  if(total === 0){
+    big.textContent = 'No shops added yet';
+    small.textContent = 'Add your first shop below';
+  } else if(doneCount === total){
+    big.textContent = 'All done for this week';
+    small.textContent = total + ' of ' + total + ' shops collected';
+  } else {
+    big.textContent = doneCount + ' of ' + total + ' collected';
+    small.textContent = (total - doneCount) + ' shop' + ((total-doneCount)===1?'':'s') + ' still to visit';
+  }
+
+  const remaining = shops.filter(s=>!collected[s.id]);
+  const banner = document.getElementById('reminderBanner');
+  const allDone = document.getElementById('allDoneBanner');
+  if(total > 0 && remaining.length > 0){
+    const names = remaining.map(s=>s.name);
+    let listText;
+    if(names.length <= 3){
+      listText = names.join(', ');
+    } else {
+      listText = names.slice(0,3).join(', ') + ' and ' + (names.length-3) + ' more';
+    }
+    banner.innerHTML = '<b>Still to collect:</b> ' + listText;
+    banner.classList.add('show');
+    allDone.classList.remove('show');
+  } else if(total > 0 && remaining.length === 0){
+    banner.classList.remove('show');
+    allDone.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+    allDone.classList.remove('show');
+  }
+}
+
+function toggleShop(id){
+  if(collected[id]) delete collected[id];
+  else collected[id] = true;
+  render();
+  saveCollected();
+}
+
+async function addShop(){
+  const input = document.getElementById('newShopName');
+  const addrInput = document.getElementById('newShopAddress');
+  const name = input.value.trim();
+  if(!name) return;
+  const address = addrInput.value.trim();
+  shops.push({id: uid(), name: name, note: address});
+  input.value = '';
+  addrInput.value = '';
+  render();
+  await saveShops();
+}
+
+async function removeShop(id){
+  shops = shops.filter(s=>s.id !== id);
+  delete collected[id];
+  render();
+  await saveShops();
+  await saveCollected();
+}
+
+async function resetWeek(){
+  collected = {};
+  render();
+  await saveCollected();
+}
+
+document.getElementById('addBtn').onclick = addShop;
+document.getElementById('newShopName').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') addShop();
+});
+document.getElementById('newShopAddress').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') addShop();
+});
+document.getElementById('resetBtn').onclick = ()=>{
+  if(confirm('Clear all ticks for this week? Your shop list stays.')) resetWeek();
+};
+
+loadAll();
 </script>
 </body>
 </html>
