@@ -270,11 +270,13 @@ function setStatus(text){
   document.getElementById('lastSaved').textContent = text;
 }
 
+const SHARED_DOC_ID = 'robloxgamer12746-main';
+
 function ensureAuth(){
   return new Promise((resolve, reject)=>{
     onAuthStateChanged(auth, (user)=>{
       if(user){
-        userDocRef = doc(db, 'trackers', user.uid);
+        userDocRef = doc(db, 'trackers', SHARED_DOC_ID);
         resolve(user);
       } else {
         signInAnonymously(auth).catch(err=>{
