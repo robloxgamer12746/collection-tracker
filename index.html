@@ -219,7 +219,7 @@
   </div>
 
   <div class="footer-row">
-    <span class="status" id="lastSaved"></span>
+    <span class="status"><span id="lastSaved"></span> <span id="reloadTimer"></span></span>
     <button class="reset-btn" id="resetBtn">Reset this week's ticks</button>
   </div>
 </div>
@@ -227,7 +227,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBqlFxSX-_LOlnQJt-WXpvJi6z8ypFofb4",
@@ -294,23 +294,28 @@ async function loadAll(){
   try{
     await ensureAuth();
     const snap = await getDoc(userDocRef);
-    if(snap.exists()){
-      const data = snap.data();
-      shops = data.shops || [];
-      collected = (data.weeks && data.weeks[weekId]) || {};
-    } else {
-      shops = [];
-      collected = {};
+    if(!snap.exists()){
       await setDoc(userDocRef, { shops: [], weeks: {} });
     }
     setStatus('');
+
+    onSnapshot(userDocRef, (liveSnap)=>{
+      if(!liveSnap.exists()) return;
+      const data = liveSnap.data();
+      shops = data.shops || [];
+      collected = (data.weeks && data.weeks[weekId]) || {};
+      render();
+    }, (err)=>{
+      console.error('live sync error', err);
+      setStatus('Offline — could not connect');
+    });
   }catch(e){
     console.error('load failed', e);
     shops = [];
     collected = {};
     setStatus('Offline — changes may not save');
+    render();
   }
-  render();
 }
 
 async function saveShops(){
@@ -471,6 +476,20 @@ document.getElementById('resetBtn').onclick = ()=>{
 };
 
 loadAll();
+
+let secondsLeft = 30;
+const reloadTimerEl = document.getElementById('reloadTimer');
+function tickReloadTimer(){
+  reloadTimerEl.textContent = '· reloading in ' + secondsLeft + 's';
+  if(secondsLeft <= 0){
+    window.location.reload();
+    return;
+  }
+  secondsLeft--;
+}
+tickReloadTimer();
+setInterval(tickReloadTimer, 1000);
+
 </script>
 </body>
 </html>
