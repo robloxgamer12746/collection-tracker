@@ -163,10 +163,11 @@
     background:var(--ink);
     color:#fff;
     border-radius:10px;
-    padding:0 20px;
+    padding:12px 20px;
     font-size:14px;
     font-weight:500;
     cursor:pointer;
+    margin-top:4px;
   }
   .add-row button:active{transform:scale(0.97);}
 
@@ -211,9 +212,10 @@
   <ul class="shop-list" id="shopList"></ul>
   <div class="empty" id="emptyState" style="display:none;">No shops yet. Add your first one below.</div>
 
-  <div class="add-row">
+  <div class="add-row" style="flex-direction:column;">
     <input type="text" id="newShopName" placeholder="Shop name, e.g. Riverside Bakery" maxlength="60" />
-    <button id="addBtn">Add</button>
+    <input type="text" id="newShopAddress" placeholder="Address (optional)" maxlength="100" />
+    <button id="addBtn">Add shop</button>
   </div>
 
   <div class="footer-row">
@@ -381,10 +383,13 @@
 
   async function addShop(){
     const input = document.getElementById('newShopName');
+    const addrInput = document.getElementById('newShopAddress');
     const name = input.value.trim();
     if(!name) return;
-    shops.push({id: uid(), name: name, note:''});
+    const address = addrInput.value.trim();
+    shops.push({id: uid(), name: name, note: address});
     input.value = '';
+    addrInput.value = '';
     render();
     await saveShops();
   }
@@ -405,6 +410,9 @@
 
   document.getElementById('addBtn').onclick = addShop;
   document.getElementById('newShopName').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') addShop();
+  });
+  document.getElementById('newShopAddress').addEventListener('keydown', e=>{
     if(e.key === 'Enter') addShop();
   });
   document.getElementById('resetBtn').onclick = ()=>{
