@@ -254,13 +254,13 @@
 
   async function loadAll(){
     try{
-      const res = await window.storage.get(SHOPS_KEY, false);
-      shops = res ? JSON.parse(res.value) : [];
+      const raw = localStorage.getItem(SHOPS_KEY);
+      shops = raw ? JSON.parse(raw) : [];
     }catch(e){ shops = []; }
 
     try{
-      const res = await window.storage.get(WEEK_KEY_PREFIX + weekId, false);
-      collected = res ? JSON.parse(res.value) : {};
+      const raw = localStorage.getItem(WEEK_KEY_PREFIX + weekId);
+      collected = raw ? JSON.parse(raw) : {};
     }catch(e){ collected = {}; }
 
     render();
@@ -268,13 +268,13 @@
 
   async function saveShops(){
     try{
-      await window.storage.set(SHOPS_KEY, JSON.stringify(shops), false);
+      localStorage.setItem(SHOPS_KEY, JSON.stringify(shops));
     }catch(e){ console.error('save shops failed', e); }
   }
 
   async function saveCollected(){
     try{
-      await window.storage.set(WEEK_KEY_PREFIX + weekId, JSON.stringify(collected), false);
+      localStorage.setItem(WEEK_KEY_PREFIX + weekId, JSON.stringify(collected));
       const el = document.getElementById('lastSaved');
       el.textContent = 'Saved';
       setTimeout(()=>{ if(el.textContent==='Saved') el.textContent=''; }, 1500);
